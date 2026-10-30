@@ -46,6 +46,8 @@ public abstract class AbstractIntegrationTest {
         r.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
         r.add("spring.data.redis.password", () -> "");
         r.add("spring.docker.compose.enabled", () -> "false");
+        r.add("jwt.secret", () -> "67ZoSbcCqqRaJTmV2gIVwz7Wn0B0QiUx2ARBLR4S9Zw");
+        r.add("internal.key", () -> "test-internal-key");
     }
 
     @Autowired protected MockMvc mockMvc;

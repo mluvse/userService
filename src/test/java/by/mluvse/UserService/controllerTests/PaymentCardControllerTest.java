@@ -4,7 +4,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -95,7 +94,7 @@ class PaymentCardControllerTest extends AbstractIntegrationTest {
                             .param("active", "false"))
                     .andExpect(status().isOk());
         }
-        createCard(userId, "4111111111111119");   // должно пройти
+        createCard(userId, "4111111111111119");
     }
 
     @Test
@@ -105,7 +104,7 @@ class PaymentCardControllerTest extends AbstractIntegrationTest {
         mockMvc.perform(patch("/api/cards/{id}/status", first).with(asAdmin())
                 .param("active", "false")).andExpect(status().isOk());
         for (int i = 1; i <= 5; i++) {
-            createCard(userId, "411111111111111" + i);   // 5 активных
+            createCard(userId, "411111111111111" + i);
         }
         mockMvc.perform(patch("/api/cards/{id}/status", first).with(asAdmin())
                         .param("active", "true"))

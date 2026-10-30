@@ -15,7 +15,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,7 +22,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -50,11 +48,8 @@ public class PaymentCardServiceImpl implements PaymentCardService{
         if (repository.existsByNumber(dto.number())) {
             throw new DuplicateResourceException("Card number already exists: " + dto.number());
         }
-        if (repository.countByUserId(dto.userId()) >= 5) {
-            throw new CardLimitException("User already has 5 cards");
-        }
-        PaymentCard card = mapper.toEntity(dto);
         checkLimit(dto.userId());
+        PaymentCard card = mapper.toEntity(dto);
         card.setActive(true);
         user.addCard(card);
         return mapper.toDto(repository.save(card));
@@ -62,11 +57,11 @@ public class PaymentCardServiceImpl implements PaymentCardService{
 
     @Override
     @Transactional
-    public Optional<CardDto> getById(Long id, AuthUser user) {
+    public CardDto getById(Long id, AuthUser user) {
         PaymentCard card = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Card not found: " + id));
         checkOwner(card, user);
-        return Optional.ofNullable(mapper.toDto(card));
+        return mapper.toDto(card);
     }
 
     @Override
@@ -80,8 +75,9 @@ public class PaymentCardServiceImpl implements PaymentCardService{
 
     @Override
     @Transactional
-    @CachePut(value = "payment_cards", key = "#id")
-    @CacheEvict(value = "users", key = "#dto.userId()")
+    @Caching(
+            put = @CachePut(value = "payment_cards", key = "#id"),
+            evict = @CacheEvict(value = "users", allEntries = true))
     public CardDto update(Long id, CardDto dto, AuthUser user) {
         PaymentCard card = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Card not found: " + id));
@@ -103,8 +99,12 @@ public class PaymentCardServiceImpl implements PaymentCardService{
         PaymentCard card = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Card not found: " + id));
         checkOwner(card, user);
-        if(card.isActive()== status) throw new IllegalArgumentException("Status already:"+ status);
-        checkLimit(id);
+        if (card.isActive() == status) {
+            throw new IllegalArgumentException("Status already: " + status);
+        }
+        if (status) {
+            checkLimit(card.getUser().getId());
+        }
         card.setActive(status);
         return mapper.toDto(card);
     }

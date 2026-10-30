@@ -1,70 +1,62 @@
 package by.mluvse.UserService.web;
 
 import by.mluvse.UserService.dto.CardDto;
-import by.mluvse.UserService.exceptions.NotFoundException;
+import by.mluvse.UserService.dto.UpdateCardDto;
+import by.mluvse.UserService.entity.AuthUser;
 import by.mluvse.UserService.service.PaymentCardService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
 
 
 @RestController
 @RequestMapping("/api/cards")
+@RequiredArgsConstructor
 public class PaymentCardController {
 
     private final PaymentCardService cardService;
 
-
-    public PaymentCardController(PaymentCardService cardService) {
-        this.cardService = cardService;
-
-    }
-
-    @PostMapping
-    public ResponseEntity<CardDto> create(@Valid @RequestBody CardDto cardDto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(cardService.create(cardDto));
-    }
-
     @GetMapping("/{id}")
-    public ResponseEntity<CardDto> get(@PathVariable Long id){
-        return ResponseEntity.ok(cardService.getById(id).orElseThrow(() -> new NotFoundException("Card not found: " + id)));
+    public ResponseEntity<CardDto> get(@PathVariable Long id,
+                                                 @AuthenticationPrincipal AuthUser user) {
+        return ResponseEntity.ok(cardService.getById(id, user));
     }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<CardDto>> getAll(@RequestParam(required = false) String name,
                                                 @RequestParam(required = false) String surname,
-                                                Pageable pageable){
-        return ResponseEntity.ok(cardService.getAll(name,surname,pageable));
+                                                Pageable pageable) {
+        return ResponseEntity.ok(cardService.getAll(name, surname, pageable));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CardDto> update(@PathVariable Long id,
-                                          @Valid @RequestBody CardDto dto) {
-        return ResponseEntity.ok(cardService.update(id, dto));
-    }
-    @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<CardDto> activate(@PathVariable Long id){
-        return ResponseEntity.ok(cardService.changeStatus(id, true));
-
+                                          @Valid @RequestBody UpdateCardDto body,
+                                          @AuthenticationPrincipal AuthUser user) {
+        CardDto dto = new CardDto(id, null, body.number(), body.holder(),
+                body.expirationDate(), null);
+        return ResponseEntity.ok(cardService.update(id, dto, user));
     }
 
-    @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<CardDto> deactivate(@PathVariable Long id){
-        return ResponseEntity.ok(cardService.changeStatus(id, false));
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<CardDto> changeStatus(@PathVariable Long id,
+                                                @RequestParam boolean active,
+                                                @AuthenticationPrincipal AuthUser user) {
+        return ResponseEntity.ok(cardService.changeStatus(id, active, user));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id){
-        cardService.delete(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Void> delete(@PathVariable Long id,
+                                       @AuthenticationPrincipal AuthUser user) {
+        cardService.delete(id, user);
+        return ResponseEntity.noContent().build();
     }
 }

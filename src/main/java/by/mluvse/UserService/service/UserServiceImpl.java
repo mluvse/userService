@@ -7,6 +7,7 @@ import by.mluvse.UserService.dto.UserMapper;
 import by.mluvse.UserService.entity.User;
 
 import by.mluvse.UserService.exceptions.CardLimitException;
+import by.mluvse.UserService.exceptions.DuplicateResourceException;
 import by.mluvse.UserService.exceptions.NotFoundException;
 import by.mluvse.UserService.repository.UserRepository;
 import by.mluvse.UserService.specification.UserSpecification;
@@ -37,7 +38,7 @@ public class UserServiceImpl  implements UserService{
     @Transactional
     public UserDto create(UserDto dto) {
         if(repository.existsByEmail(dto.email())){
-            throw new IllegalArgumentException("Email already exists:"+dto.email());
+            throw new DuplicateResourceException("Email already exists: " + dto.email());
         }
         if (dto.cards() != null && dto.cards().size() > MAX_CARDS_PER_USER) {
             throw new CardLimitException("User cannot have more than " + MAX_CARDS_PER_USER + " cards");
@@ -78,6 +79,9 @@ public class UserServiceImpl  implements UserService{
     public UserDto update(Long id, UserDto dto) {
         User user= repository.findById(id)
                 .orElseThrow(()-> new NotFoundException(USER_NOT_FOUND));
+        if (!user.getEmail().equals(dto.email()) && repository.existsByEmail(dto.email())) {
+            throw new DuplicateResourceException("Email already exists: " + dto.email());
+        }
         mapper.updateEntity(dto, user);
         return mapper.toDto(user);
     }

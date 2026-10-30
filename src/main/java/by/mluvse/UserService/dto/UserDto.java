@@ -19,9 +19,9 @@ public record UserDto(
         LocalDate birthDate,
         @NotBlank @Email
         String email,
-        @Valid @Size(max = 5)
-        List<CardDto> cards,
-        boolean active)  implements Serializable {
+         @Size(max = 5)
+        List< @Valid CardDto> cards,
+        Boolean active)  implements Serializable {
         public void withActive(boolean active){
                 new UserDto(this.id, this.name, this.surname, this.birthDate, this.email, this.cards, active);
         }
