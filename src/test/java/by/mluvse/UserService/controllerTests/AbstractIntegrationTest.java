@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -26,6 +27,9 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 @AutoConfigureMockMvc
 
 public abstract class AbstractIntegrationTest {
+
+    @Autowired
+    protected RedisTemplate<String, Object> redisTemplate;
 
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
     static final GenericContainer<?> REDIS =
@@ -73,5 +77,16 @@ public abstract class AbstractIntegrationTest {
     protected boolean isCached(String cacheName, Long id) {
         Cache cache = cacheManager.getCache(cacheName);
         return cache != null && cache.get(id) != null;
+    }
+
+    @BeforeEach
+    void checkRedisConnection() {
+        try {
+            redisTemplate.opsForValue().set("test:key", "test");
+            Object value = redisTemplate.opsForValue().get("test:key");
+            System.out.println("=== Redis connection OK: " + value + " ===");
+        } catch (Exception e) {
+            System.err.println("=== Redis connection FAILED: " + e.getMessage() + " ===");
+        }
     }
 }

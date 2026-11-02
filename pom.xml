@@ -28,6 +28,9 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
+		<sonar.organization>mluvse</sonar.organization>
+		<sonar.projectKey>mluvse_userService</sonar.projectKey>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 	</properties>
 	<dependencies>
 		<dependency>
