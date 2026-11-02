@@ -5,9 +5,14 @@ import by.mluvse.UserService.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -25,7 +30,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 
 @SpringBootTest
 @AutoConfigureMockMvc
-
+@Import(AbstractIntegrationTest.TestCacheConfig.class)
 public abstract class AbstractIntegrationTest {
 
     @Autowired
@@ -84,6 +89,15 @@ public abstract class AbstractIntegrationTest {
     protected boolean isCached(String cacheName, Long id) {
         Cache cache = cacheManager.getCache(cacheName);
         return cache != null && cache.get(id) != null;
+    }
+
+    @TestConfiguration
+    static class TestCacheConfig {
+        @Bean
+        @Primary
+        public CacheManager cacheManager() {
+            return new ConcurrentMapCacheManager("users", "payment_cards");
+        }
     }
 
 }
