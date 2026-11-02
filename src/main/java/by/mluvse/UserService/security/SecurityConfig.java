@@ -21,6 +21,7 @@ public class SecurityConfig {
     private final JwtFilter jwtFilter;
     private final InternalKeyFilter internalKeyFilter;
 
+    @SuppressWarnings("java:S4502")
     @Bean
     SecurityFilterChain chain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)

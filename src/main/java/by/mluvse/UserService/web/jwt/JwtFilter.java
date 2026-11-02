@@ -39,7 +39,7 @@ public class JwtFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             } catch (JwtException | IllegalArgumentException ignored) {
-
+                // ignored
             }
         }
         chain.doFilter(req, res);

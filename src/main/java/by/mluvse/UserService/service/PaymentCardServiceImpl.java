@@ -27,6 +27,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class PaymentCardServiceImpl implements PaymentCardService{
 
+    private static final String CARD_NOT_FOUND= "Card not found: ";
+
     private static final int MAX_ACTIVE_CARDS = 5;
 
     private final PaymentCardRepository  repository;
@@ -59,7 +61,7 @@ public class PaymentCardServiceImpl implements PaymentCardService{
     @Transactional
     public CardDto getById(Long id, AuthUser user) {
         PaymentCard card = repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Card not found: " + id));
+                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
         checkOwner(card, user);
         return mapper.toDto(card);
     }
@@ -80,7 +82,7 @@ public class PaymentCardServiceImpl implements PaymentCardService{
             evict = @CacheEvict(value = "users", allEntries = true))
     public CardDto update(Long id, CardDto dto, AuthUser user) {
         PaymentCard card = repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Card not found: " + id));
+                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
         checkOwner(card, user);
         if (!card.getNumber().equals(dto.number())
                 && repository.existsByNumber(dto.number())) {
@@ -97,7 +99,7 @@ public class PaymentCardServiceImpl implements PaymentCardService{
             evict = @CacheEvict(value = "users", allEntries = true))
     public CardDto changeStatus(Long id, boolean status, AuthUser user) {
         PaymentCard card = repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Card not found: " + id));
+                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
         checkOwner(card, user);
         if (card.isActive() == status) {
             throw new IllegalArgumentException("Status already: " + status);
@@ -117,7 +119,7 @@ public class PaymentCardServiceImpl implements PaymentCardService{
     )
     public void delete(Long id, AuthUser user) {
         PaymentCard card = repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Card not found: " + id));
+                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
         checkOwner(card, user);
         card.getUser().removeCard(card);
     }
