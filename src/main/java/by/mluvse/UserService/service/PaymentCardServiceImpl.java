@@ -15,7 +15,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -34,6 +33,7 @@ public class PaymentCardServiceImpl implements PaymentCardService{
     private final PaymentCardRepository  repository;
     private final UserRepository userRepository;
     private final PaymentCardMapper mapper;
+    private final CacheEvictionService cacheEvictionService;
 
 
 
@@ -77,9 +77,7 @@ public class PaymentCardServiceImpl implements PaymentCardService{
 
     @Override
     @Transactional
-    @Caching(
-            put = @CachePut(value = "payment_cards", key = "#id"),
-            evict = @CacheEvict(value = "users", allEntries = true))
+    @CachePut(value = "payment_cards", key = "#id")
     public CardDto update(Long id, CardDto dto, AuthUser user) {
         PaymentCard card = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
@@ -89,14 +87,13 @@ public class PaymentCardServiceImpl implements PaymentCardService{
             throw new DuplicateResourceException("Card number already exists: " + dto.number());
         }
         mapper.updateEntity(dto, card);
+        cacheEvictionService.evictAllUsers();
         return mapper.toDto(card);
     }
 
     @Override
     @Transactional
-    @Caching(
-            put = @CachePut(value = "payment_cards", key = "#id"),
-            evict = @CacheEvict(value = "users", allEntries = true))
+    @CachePut(value = "payment_cards", key = "#id")
     public CardDto changeStatus(Long id, boolean status, AuthUser user) {
         PaymentCard card = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
@@ -108,20 +105,19 @@ public class PaymentCardServiceImpl implements PaymentCardService{
             checkLimit(card.getUser().getId());
         }
         card.setActive(status);
+        cacheEvictionService.evictAllUsers();
         return mapper.toDto(card);
     }
 
     @Override
     @Transactional
-    @Caching(
-            evict ={ @CacheEvict(value = "payment_cards", key = "#id"),
-                    @CacheEvict(value = "users", allEntries = true)}
-    )
+    @CacheEvict(value = "payment_cards", key = "#id")
     public void delete(Long id, AuthUser user) {
         PaymentCard card = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
         checkOwner(card, user);
         card.getUser().removeCard(card);
+        cacheEvictionService.evictAllUsers();
     }
 
     private void checkOwner(PaymentCard card, AuthUser user) {

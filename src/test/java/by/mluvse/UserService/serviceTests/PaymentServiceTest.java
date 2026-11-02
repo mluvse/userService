@@ -10,6 +10,7 @@ import by.mluvse.UserService.exceptions.DuplicateResourceException;
 import by.mluvse.UserService.exceptions.NotFoundException;
 import by.mluvse.UserService.repository.PaymentCardRepository;
 import by.mluvse.UserService.repository.UserRepository;
+import by.mluvse.UserService.service.CacheEvictionService;
 import by.mluvse.UserService.service.PaymentCardServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,10 @@ public class PaymentServiceTest {
     @Mock PaymentCardRepository repository;
     @Mock UserRepository userRepository;
     @Mock PaymentCardMapper mapper;
-    @InjectMocks PaymentCardServiceImpl service;
+    @Mock
+    private CacheEvictionService cacheEvictionService;
+    @InjectMocks
+    private PaymentCardServiceImpl service;
 
     private User testUser;
     private PaymentCard testCard;
@@ -65,6 +69,8 @@ public class PaymentServiceTest {
 
         testCardDto = new CardDto(10L, 1L, "4111111111111111", "IVAN PETROV",
                 LocalDate.of(2030, 12, 31), true);
+        cacheEvictionService = mock(CacheEvictionService.class);
+        service= new PaymentCardServiceImpl(repository,userRepository,mapper,cacheEvictionService);
     }
 
 
