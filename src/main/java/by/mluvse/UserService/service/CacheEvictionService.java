@@ -8,6 +8,6 @@ public class CacheEvictionService {
 
     @CacheEvict(value = "users", allEntries = true)
     public void evictAllUsers() {
-
+        // empty 'cause using aop
     }
 }
