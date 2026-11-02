@@ -31,8 +31,11 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: >
-          mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+          mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar
           -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+          -Dsonar.organization=mluvse
+          -Dsonar.projectKey=mluvse_userService
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
       - name: Build Docker Image
         run: docker build -t userservice:latest .
