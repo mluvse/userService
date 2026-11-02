@@ -41,8 +41,10 @@ public class PaymentCardController {
     public ResponseEntity<CardDto> update(@PathVariable Long id,
                                           @Valid @RequestBody UpdateCardDto body,
                                           @AuthenticationPrincipal AuthUser user) {
-        CardDto dto = new CardDto(id, null, body.number(), body.holder(),
-                body.expirationDate(), null);
+        CardDto existing = cardService.getById(id, user);
+
+        CardDto dto = new CardDto(id, existing.userId(), body.number(), body.holder(),
+                body.expirationDate(), existing.active());
         return ResponseEntity.ok(cardService.update(id, dto, user));
     }
 

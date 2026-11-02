@@ -62,6 +62,13 @@ public abstract class AbstractIntegrationTest {
     void cleanUp() {
         userRepository.deleteAll();
         cacheManager.getCacheNames().forEach(n -> cacheManager.getCache(n).clear());
+        try {
+            redisTemplate.opsForValue().set("test:key", "test");
+            Object value = redisTemplate.opsForValue().get("test:key");
+            System.out.println("=== Redis connection OK: " + value + " ===");
+        } catch (Exception e) {
+            System.err.println("=== Redis connection FAILED: " + e.getMessage() + " ===");
+        }
     }
 
     protected static RequestPostProcessor asAdmin() {
@@ -79,14 +86,4 @@ public abstract class AbstractIntegrationTest {
         return cache != null && cache.get(id) != null;
     }
 
-    @BeforeEach
-    void checkRedisConnection() {
-        try {
-            redisTemplate.opsForValue().set("test:key", "test");
-            Object value = redisTemplate.opsForValue().get("test:key");
-            System.out.println("=== Redis connection OK: " + value + " ===");
-        } catch (Exception e) {
-            System.err.println("=== Redis connection FAILED: " + e.getMessage() + " ===");
-        }
-    }
 }
