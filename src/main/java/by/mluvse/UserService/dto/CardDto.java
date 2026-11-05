@@ -17,7 +17,7 @@ public record CardDto(Long id,
                       String holder,
                       @NotNull @Future
                       LocalDate expirationDate,
-                      boolean active) implements Serializable {
+                      Boolean active) implements Serializable {
     public void withActive(boolean active){
         new CardDto(this.id, this.userId, this.number, this.holder, this.expirationDate, active);
     }

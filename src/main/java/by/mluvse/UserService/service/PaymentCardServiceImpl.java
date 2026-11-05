@@ -2,6 +2,7 @@ package by.mluvse.UserService.service;
 
 import by.mluvse.UserService.dto.CardDto;
 import by.mluvse.UserService.dto.PaymentCardMapper;
+import by.mluvse.UserService.entity.AuthUser;
 import by.mluvse.UserService.entity.PaymentCard;
 import by.mluvse.UserService.entity.User;
 import by.mluvse.UserService.exceptions.CardLimitException;
@@ -14,22 +15,25 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class PaymentCardServiceImpl implements PaymentCardService{
 
+    private static final String CARD_NOT_FOUND= "Card not found: ";
+
+    private static final int MAX_ACTIVE_CARDS = 5;
+
     private final PaymentCardRepository  repository;
     private final UserRepository userRepository;
     private final PaymentCardMapper mapper;
+    private final CacheEvictionService cacheEvictionService;
 
 
 
@@ -37,15 +41,16 @@ public class PaymentCardServiceImpl implements PaymentCardService{
     @Override
     @Transactional
     @CacheEvict(value = "users", key = "#dto.userId()")
-    public CardDto create(CardDto dto) {
+    public CardDto create(CardDto dto, AuthUser authUser) {
+        if (!authUser.isAdmin() && !dto.userId().equals(authUser.userId())) {
+            throw new AccessDeniedException("You can create cards only for yourself");
+        }
         User user = userRepository.findById(dto.userId())
                 .orElseThrow(() -> new NotFoundException("User not found: " + dto.userId()));
         if (repository.existsByNumber(dto.number())) {
             throw new DuplicateResourceException("Card number already exists: " + dto.number());
         }
-        if (repository.countByUserId(dto.userId()) >= 5) {
-            throw new CardLimitException("User already has 5 cards");
-        }
+        checkLimit(dto.userId());
         PaymentCard card = mapper.toEntity(dto);
         card.setActive(true);
         user.addCard(card);
@@ -54,9 +59,11 @@ public class PaymentCardServiceImpl implements PaymentCardService{
 
     @Override
     @Transactional
-    @Cacheable(value = "payment_cards", key = "#id")
-    public Optional<CardDto> getById(Long id) {
-        return repository.findById(id).map(mapper::toDto);
+    public CardDto getById(Long id, AuthUser user) {
+        PaymentCard card = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
+        checkOwner(card, user);
+        return mapper.toDto(card);
     }
 
     @Override
@@ -71,41 +78,60 @@ public class PaymentCardServiceImpl implements PaymentCardService{
     @Override
     @Transactional
     @CachePut(value = "payment_cards", key = "#id")
-    @CacheEvict(value = "users", key = "#dto.userId()")
-    public CardDto update(Long id, CardDto dto) {
-        PaymentCard card=  repository.findById(id)
-                .orElseThrow(()-> new NotFoundException("Card not found:"+ id));
+    public CardDto update(Long id, CardDto dto, AuthUser user) {
+        PaymentCard card = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
+        checkOwner(card, user);
         if (!card.getNumber().equals(dto.number())
                 && repository.existsByNumber(dto.number())) {
             throw new DuplicateResourceException("Card number already exists: " + dto.number());
         }
         mapper.updateEntity(dto, card);
+        cacheEvictionService.evictAllUsers();
         return mapper.toDto(card);
     }
 
     @Override
     @Transactional
-    @Caching(
-            put = @CachePut(value = "payment_cards", key = "#id"),
-            evict = @CacheEvict(value = "users", allEntries = true))
-    public CardDto changeStatus(Long id, boolean status) {
-        PaymentCard card= repository.findById(id)
-                .orElseThrow(()-> new NotFoundException("Card not found"));
-        if(card.isActive()== status) throw new IllegalArgumentException("Status already:"+ status);
-        card.setActive(status);
-        return mapper.toDto(card);
-    }
-
-    @Override
-    @Transactional
-    @Caching(
-            evict ={ @CacheEvict(value = "payment_cards", key = "#id"),
-                    @CacheEvict(value = "users", allEntries = true)}
-    )
-    public void delete(Long id) {
+    @CachePut(value = "payment_cards", key = "#id")
+    public CardDto changeStatus(Long id, boolean status, AuthUser user) {
         PaymentCard card = repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Card not found: " + id));
+                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
+        checkOwner(card, user);
+        if (card.isActive() == status) {
+            throw new IllegalArgumentException("Status already: " + status);
+        }
+        if (status) {
+            checkLimit(card.getUser().getId());
+        }
+        card.setActive(status);
+        cacheEvictionService.evictAllUsers();
+        return mapper.toDto(card);
+    }
 
+    @Override
+    @Transactional
+    @CacheEvict(value = "payment_cards", key = "#id")
+    public void delete(Long id, AuthUser user) {
+        PaymentCard card = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
+        checkOwner(card, user);
         card.getUser().removeCard(card);
+        cacheEvictionService.evictAllUsers();
+    }
+
+    private void checkOwner(PaymentCard card, AuthUser user) {
+        if (user.isAdmin()) {
+            return;
+        }
+        if (!card.getUser().getId().equals(user.userId())) {
+            throw new AccessDeniedException("You can access only your own cards");
+        }
+    }
+
+    private void checkLimit(Long userId) {
+        if (repository.countByUserIdAndActiveTrue(userId) >= MAX_ACTIVE_CARDS) {
+            throw new CardLimitException("User already has " + MAX_ACTIVE_CARDS + " active cards");
+        }
     }
 }

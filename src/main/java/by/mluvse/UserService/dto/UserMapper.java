@@ -1,6 +1,5 @@
 package by.mluvse.UserService.dto;
 
-import by.mluvse.UserService.entity.PaymentCard;
 import by.mluvse.UserService.entity.User;
 import org.mapstruct.*;
 
@@ -13,6 +12,7 @@ public interface UserMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "cards", source = "cards", nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS)
     User toEntity(UserDto dto);
 
     @Mapping(target = "id", ignore = true)
@@ -23,8 +23,9 @@ public interface UserMapper {
 
     @AfterMapping
     default void linkCards(@MappingTarget User user){
-        for( PaymentCard card:user.getCards()){
-            card.setUser(user);
+        if (user.getCards() == null) {
+            return;
         }
+        user.getCards().forEach(card -> card.setUser(user));
     }
 }

@@ -6,6 +6,7 @@ import by.mluvse.UserService.dto.UserDto;
 import by.mluvse.UserService.dto.UserMapper;
 import by.mluvse.UserService.entity.PaymentCard;
 import by.mluvse.UserService.entity.User;
+import by.mluvse.UserService.exceptions.DuplicateResourceException;
 import by.mluvse.UserService.exceptions.NotFoundException;
 import by.mluvse.UserService.repository.UserRepository;
 import by.mluvse.UserService.service.UserServiceImpl;
@@ -152,7 +153,7 @@ public class UserServiceTest {
     void create_whenEmailExists_throwsAndDoesNotSave() {
         when(repository.existsByEmail(testUserDto.email())).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () -> userService.create(testUserDto));
+        assertThrows(DuplicateResourceException.class, () -> userService.create(testUserDto));
         verify(repository, never()).save(any());
     }
 
